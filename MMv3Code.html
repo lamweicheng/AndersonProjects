@@ -7,154 +7,154 @@
 	<pre>
 		<code>
 			
-import board
-import time
-from math import pi
+			import board
+			import time
+			from math import pi
 
-import digitalio
-import neopixel
-import rotaryio
-import pwmio
-import adafruit_motor.motor as motor
+			import digitalio
+			import neopixel
+			import rotaryio
+			import pwmio
+			import adafruit_motor.motor as motor
 
-""" Constants """
+			""" Constants """
 
-ENCODER_TICKS_PER_REVOLUTION = 217
-WHEELBASE_DIAMETER = 78.0 # mm
-WHEEL_DIAMETER = 34.0 # mm
+			ENCODER_TICKS_PER_REVOLUTION = 217
+			WHEELBASE_DIAMETER = 78.0 # mm
+			WHEEL_DIAMETER = 34.0 # mm
 
-""" Peripherals """
+			""" Peripherals """
 
-# debug
-led = digitalio.DigitalInOut(board.LED)
-led.direction = digitalio.Direction.OUTPUT
+			# debug
+			led = digitalio.DigitalInOut(board.LED)
+			led.direction = digitalio.Direction.OUTPUT
 
-but = digitalio.DigitalInOut(board.GP3)
-but.pull = digitalio.Pull.UP
+			but = digitalio.DigitalInOut(board.GP3)
+			but.pull = digitalio.Pull.UP
 
-rgb = neopixel.NeoPixel(board.GP4, 1)
+			rgb = neopixel.NeoPixel(board.GP4, 1)
 
-# encoders
-lenc = rotaryio.IncrementalEncoder(board.GP12, board.GP13)
-renc = rotaryio.IncrementalEncoder(board.GP19, board.GP18)
+			# encoders
+			lenc = rotaryio.IncrementalEncoder(board.GP12, board.GP13)
+			renc = rotaryio.IncrementalEncoder(board.GP19, board.GP18)
 
-# motors
-lmot = motor.DCMotor(
-    pwmio.PWMOut(board.GP16, frequency=20000),
-    pwmio.PWMOut(board.GP17, frequency=20000)
-)
-rmot = motor.DCMotor(
-    pwmio.PWMOut(board.GP15, frequency=20000),
-    pwmio.PWMOut(board.GP14, frequency=20000)
-)
-lmot.decay_mode = motor.SLOW_DECAY
-rmot.decay_mode = motor.SLOW_DECAY
+			# motors
+			lmot = motor.DCMotor(
+				pwmio.PWMOut(board.GP16, frequency=20000),
+				pwmio.PWMOut(board.GP17, frequency=20000)
+			)
+			rmot = motor.DCMotor(
+				pwmio.PWMOut(board.GP15, frequency=20000),
+				pwmio.PWMOut(board.GP14, frequency=20000)
+			)
+			lmot.decay_mode = motor.SLOW_DECAY
+			rmot.decay_mode = motor.SLOW_DECAY
 
-kp_lin, ki_lin, kd_lin = 0.1, 0.0, 0.001
-kp_ang , ki_ang, kd_ang = 0.4, 0.1, 0.002
-previous_error_lin , previous_error_ang = 0.0, 0.0
-i_lin, i_ang = 0.0, 0.0
-dt = 0.02
-max_correction = 0.9
-max_output = 0.6
-
-
-""" Main """
-
-def constrain(val, min_val, max_val):
-    return min(max_val, max(val, min_val))
-
-# compute dist and theta
-def compute_odometry():
-    left_dist = lenc.position * pi * WHEEL_DIAMETER / ENCODER_TICKS_PER_REVOLUTION
-    right_dist = renc.position * pi * WHEEL_DIAMETER / ENCODER_TICKS_PER_REVOLUTION
-    dist = (left_dist + right_dist) / 2
-    theta = (right_dist - left_dist) / WHEELBASE_DIAMETER
-    return dist, theta
-
-# compute correction and error terms for a target theta
-def compute_u_ang(theta, theta_target):
-    errorAng = theta_target - theta
-    global i_ang 
-    global previous_error_ang 
-    i_ang += errorAng * dt
-    d = (errorAng - previous_error_ang) / dt
-    
-    previous_error_ang = errorAng
-    out =  (kp_ang* errorAng) + (ki_ang * i_ang) + (kd_ang* d)
-    if out> max_correction:
-           out = max_correction
-    if out < -max_correction:
-         out = -max_correction 
-    return out, errorAng
+			kp_lin, ki_lin, kd_lin = 0.1, 0.0, 0.001
+			kp_ang , ki_ang, kd_ang = 0.4, 0.1, 0.002
+			previous_error_lin , previous_error_ang = 0.0, 0.0
+			i_lin, i_ang = 0.0, 0.0
+			dt = 0.02
+			max_correction = 0.9
+			max_output = 0.6
 
 
-# compute correction and error terms for a target distance
-def compute_u_lin(dist, dist_target):
-    errorDis = dist_target - dist
-    global i_lin 
-    global previous_error_lin
-    i_lin += errorDis * dt
-    d = (errorDis - previous_error_lin) / dt
-     
-    previous_error_lin = errorDis
-    out =  (kp_lin* errorDis) + (ki_lin * i_lin) + (kd_lin* d)
-    if out> max_correction:
-           out = max_correction 
-    if out < -max_correction:
-         out = -max_correction 
-    return out, errorDis
+			""" Main """
+
+			def constrain(val, min_val, max_val):
+				return min(max_val, max(val, min_val))
+
+			# compute dist and theta
+			def compute_odometry():
+				left_dist = lenc.position * pi * WHEEL_DIAMETER / ENCODER_TICKS_PER_REVOLUTION
+				right_dist = renc.position * pi * WHEEL_DIAMETER / ENCODER_TICKS_PER_REVOLUTION
+				dist = (left_dist + right_dist) / 2
+				theta = (right_dist - left_dist) / WHEELBASE_DIAMETER
+				return dist, theta
+
+			# compute correction and error terms for a target theta
+			def compute_u_ang(theta, theta_target):
+				errorAng = theta_target - theta
+				global i_ang 
+				global previous_error_ang 
+				i_ang += errorAng * dt
+				d = (errorAng - previous_error_ang) / dt
+				
+				previous_error_ang = errorAng
+				out =  (kp_ang* errorAng) + (ki_ang * i_ang) + (kd_ang* d)
+				if out> max_correction:
+						out = max_correction
+				if out < -max_correction:
+						out = -max_correction 
+				return out, errorAng
 
 
-def reset_odometry():
-    global previous_error_lin , previous_error_ang
-    global i_lin, i_ang
-    lenc.position, renc.position = 0, 0
-    previous_error_lin , previous_error_ang = 0, 0
-    i_lin, i_ang = 0, 0
-
-def set_forward():
-    while True:
-        e_ang, e_lin = run_control_loop(0, 200)
-        print(e_ang, e_lin)
-
-def turn_left():
-    while True:
-        e_ang, e_lin = run_control_loop(-pi/2, 0)
-        print(e_ang, e_lin)
-
-def turn_left_twice():
-    reset_odometry()
-    theta = 0
-    while (abs(theta + pi / 2) > 0.25):  
-        e_ang, e_lin = run_control_loop(-pi/2, 0)
-        dist, theta = compute_odometry()
-        print(e_ang, e_lin)
-        time.sleep(0.02) # ~50Hz loop
-
-    lmot.throttle = 0
-    rmot.throttle = 0
-    time.sleep(1)
-    reset_odometry()
-    dist, theta = compute_odometry()
-    while (abs(theta + pi / 2)>0.25):  
-        e_ang, e_lin = run_control_loop(-pi/2, 0)
-        dist, theta = compute_odometry()
-        print(e_ang, e_lin)
-        time.sleep(0.02) # ~50Hz loop
-
-def run_control_loop(theta_target, dist_target):
-    dist, theta = compute_odometry()
-    #print(dist, theta)
-    u_ang, e_ang = compute_u_ang(theta, theta_target)
-    u_lin, e_lin = compute_u_lin(dist, dist_target)
-    lmot.throttle = constrain(u_lin - u_ang, -max_output, max_output)
-    rmot.throttle = constrain(u_lin + u_ang, -max_output, max_output)
-    return e_ang, e_lin
+			# compute correction and error terms for a target distance
+			def compute_u_lin(dist, dist_target):
+				errorDis = dist_target - dist
+				global i_lin 
+				global previous_error_lin
+				i_lin += errorDis * dt
+				d = (errorDis - previous_error_lin) / dt
+				
+				previous_error_lin = errorDis
+				out =  (kp_lin* errorDis) + (ki_lin * i_lin) + (kd_lin* d)
+				if out> max_correction:
+						out = max_correction 
+				if out < -max_correction:
+						out = -max_correction 
+				return out, errorDis
 
 
-if __name__ == "__main__":
-    turn_left_twice()
+			def reset_odometry():
+				global previous_error_lin , previous_error_ang
+				global i_lin, i_ang
+				lenc.position, renc.position = 0, 0
+				previous_error_lin , previous_error_ang = 0, 0
+				i_lin, i_ang = 0, 0
+
+			def set_forward():
+				while True:
+					e_ang, e_lin = run_control_loop(0, 200)
+					print(e_ang, e_lin)
+
+			def turn_left():
+				while True:
+					e_ang, e_lin = run_control_loop(-pi/2, 0)
+					print(e_ang, e_lin)
+
+			def turn_left_twice():
+				reset_odometry()
+				theta = 0
+				while (abs(theta + pi / 2) > 0.25):  
+					e_ang, e_lin = run_control_loop(-pi/2, 0)
+					dist, theta = compute_odometry()
+					print(e_ang, e_lin)
+					time.sleep(0.02) # ~50Hz loop
+
+				lmot.throttle = 0
+				rmot.throttle = 0
+				time.sleep(1)
+				reset_odometry()
+				dist, theta = compute_odometry()
+				while (abs(theta + pi / 2)>0.25):  
+					e_ang, e_lin = run_control_loop(-pi/2, 0)
+					dist, theta = compute_odometry()
+					print(e_ang, e_lin)
+					time.sleep(0.02) # ~50Hz loop
+
+			def run_control_loop(theta_target, dist_target):
+				dist, theta = compute_odometry()
+				#print(dist, theta)
+				u_ang, e_ang = compute_u_ang(theta, theta_target)
+				u_lin, e_lin = compute_u_lin(dist, dist_target)
+				lmot.throttle = constrain(u_lin - u_ang, -max_output, max_output)
+				rmot.throttle = constrain(u_lin + u_ang, -max_output, max_output)
+				return e_ang, e_lin
+
+
+			if __name__ == "__main__":
+				turn_left_twice()
 
         
 		</code>
